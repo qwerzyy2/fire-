@@ -1,0 +1,5 @@
+{
+  "name": "FIRE Lifestyle Planner",
+  "description": "A comprehensive Financial Independence, Retire Early (FIRE) calculator helping users estimate expenses, set retirement goals based on return/withdrawal rates, and project the time needed to achieve financial freedom.",
+  "requestFramePermissions": []
+}
