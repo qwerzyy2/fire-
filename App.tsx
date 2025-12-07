@@ -6,14 +6,10 @@ import {
   Target, 
   Hourglass, 
   Calculator,
-  Heart,
-  Home,
-  Coffee,
   Activity,
-  Car,
   Zap,
   ShieldCheck,
-  AlertCircle
+  Flag
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { Slider } from './components/Slider';
@@ -27,48 +23,56 @@ const SAVINGS_GROWTH_RATE = 0.04; // 4% constant for accumulation phase per requ
 const App: React.FC = () => {
   // --- 1. State Management ---
 
-  // Module 1: Expenses
+  // Module 1: Monthly Expenses (Changed from Annual to Monthly)
   const [expenses, setExpenses] = useState<ExpenseCategories>({
-    housing: 12000,     // 住房固定
-    food: 10000,        // 餐饮生鲜
-    consumables: 3000,  // 日常消耗
-    medical: 2000,      // 医保看病
-    transport: 2000,    // 交通快递
-    hobbies: 5000       // 电子女友 (Hobbies/Entertainment)
+    housing: 3000,      // 住房固定 (月)
+    food: 2000,         // 餐饮生鲜 (月)
+    consumables: 1000,  // 日常消耗 (月)
+    medical: 500,       // 医保看病 (月)
+    transport: 500,     // 交通快递 (月)
+    hobbies: 1000       // 电子女友 (月)
   });
 
   // Module 2: FIRE Rates
   const [returnRate, setReturnRate] = useState<number>(4);      // Slider A: 0-100%
   const [withdrawalRate, setWithdrawalRate] = useState<number>(4); // Slider B: 0-100%
 
-  // Module 4: Income
-  const [annualIncome, setAnnualIncome] = useState<number>(100000); // 0-300,000
+  // Module 3: Income (Increased max limit)
+  const [annualIncome, setAnnualIncome] = useState<number>(200000); // 0-1,000,000
+
+  // Module 4: Custom Goal
+  const [customGoal, setCustomGoal] = useState<number>(5000000); // User defined target
 
   // --- 2. Calculations ---
 
-  // Total Annual Expense
-  const totalAnnualExpense = useMemo(() => {
+  // Total Monthly Expense
+  const totalMonthlyExpense = useMemo(() => {
     return Object.values(expenses).reduce((a: number, b: number) => a + b, 0);
   }, [expenses]);
 
-  // Standard FIRE Number (25x Rule)
+  // Total Annual Expense (Monthly * 12)
+  const totalAnnualExpense = useMemo(() => {
+    return totalMonthlyExpense * 12;
+  }, [totalMonthlyExpense]);
+
+  // Standard FIRE Number (25x Rule based on Annual Expense)
   const baseFireNumber = useMemo(() => {
     return totalAnnualExpense * 25;
   }, [totalAnnualExpense]);
 
-  // Dynamic FIRE Number based on Return Rate (If you live purely off interest: Fund = Exp / ReturnRate)
+  // Dynamic FIRE Number based on Return Rate
   const returnBasedFireNumber = useMemo(() => {
     if (returnRate <= 0) return 0;
     return totalAnnualExpense / (returnRate / 100);
   }, [totalAnnualExpense, returnRate]);
 
-  // Dynamic FIRE Number based on Withdrawal Rate (Fund = Exp / WithdrawalRate)
+  // Dynamic FIRE Number based on Withdrawal Rate
   const withdrawalBasedFireNumber = useMemo(() => {
     if (withdrawalRate <= 0) return 0;
     return totalAnnualExpense / (withdrawalRate / 100);
   }, [totalAnnualExpense, withdrawalRate]);
 
-  // Years Sustainable (Simple Cash: Fund / Expense)
+  // Years Sustainable
   const yearsSustainableByReturn = useMemo(() => {
     if (totalAnnualExpense === 0) return 999;
     return returnBasedFireNumber / totalAnnualExpense;
@@ -79,32 +83,23 @@ const App: React.FC = () => {
     return withdrawalBasedFireNumber / totalAnnualExpense;
   }, [withdrawalBasedFireNumber, totalAnnualExpense]);
 
-  // Time to Goal (Accumulation Phase)
-  // Logic: 
-  // Yearly Savings = Income - Expense
-  // Target = withdrawalBasedFireNumber (User usually targets the withdrawal rate scenario)
-  // Growth = 4% (SAVINGS_GROWTH_RATE)
-  // Formula for N years: n = ln((Target * r / Savings) + 1) / ln(1 + r)
+  // Savings Logic
   const yearlySavings = annualIncome - totalAnnualExpense;
-  
-  const yearsToReachGoal = useMemo(() => {
-    const target = withdrawalBasedFireNumber;
-    
-    if (target <= 0) return 0;
+
+  // Helper function to calculate years to reach a specific target
+  const calculateYearsToGoal = (targetAmount: number) => {
+    if (targetAmount <= 0) return 0;
     if (yearlySavings <= 0) return Infinity;
 
-    // Mathematical Model: Future Value of Annuity (Ordinary)
-    // Target = Savings * [ (1 + r)^n - 1 ] / r
-    // Solve for n:
-    // (Target * r / Savings) = (1 + r)^n - 1
-    // (Target * r / Savings) + 1 = (1 + r)^n
-    // ln(...) = n * ln(1 + r)
-    
-    const numerator = Math.log(((target * SAVINGS_GROWTH_RATE) / yearlySavings) + 1);
+    // Formula: n = ln((Target * r / Savings) + 1) / ln(1 + r)
+    const numerator = Math.log(((targetAmount * SAVINGS_GROWTH_RATE) / yearlySavings) + 1);
     const denominator = Math.log(1 + SAVINGS_GROWTH_RATE);
     
     return numerator / denominator;
-  }, [withdrawalBasedFireNumber, yearlySavings]);
+  };
+
+  const yearsToReachFireGoal = useMemo(() => calculateYearsToGoal(withdrawalBasedFireNumber), [withdrawalBasedFireNumber, yearlySavings]);
+  const yearsToReachCustomGoal = useMemo(() => calculateYearsToGoal(customGoal), [customGoal, yearlySavings]);
 
   // --- 3. Handlers ---
   const handleExpenseChange = (key: ExpenseKey, value: number) => {
@@ -113,12 +108,12 @@ const App: React.FC = () => {
 
   // --- 4. Chart Data ---
   const expenseChartData = [
-    { name: '住房固定', value: expenses.housing },
-    { name: '餐饮生鲜', value: expenses.food },
-    { name: '日常消耗', value: expenses.consumables },
-    { name: '医保看病', value: expenses.medical },
-    { name: '交通快递', value: expenses.transport },
-    { name: '电子女友', value: expenses.hobbies },
+    { name: '住房', value: expenses.housing },
+    { name: '餐饮', value: expenses.food },
+    { name: '日常', value: expenses.consumables },
+    { name: '医保', value: expenses.medical },
+    { name: '交通', value: expenses.transport },
+    { name: '娱乐', value: expenses.hobbies },
   ];
 
   const formatMoney = (val: number) => 
@@ -136,7 +131,7 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">FIRE <span className="text-emerald-600">Planner</span></h1>
           </div>
           <div className="text-xs font-mono text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            v2.0 Beta
+            v2.1 Monthly Edition
           </div>
         </div>
       </header>
@@ -147,53 +142,59 @@ const App: React.FC = () => {
           {/* LEFT COLUMN: Inputs & Config */}
           <div className="lg:col-span-5 space-y-8">
             
-            {/* Section 1: Expenses */}
+            {/* Section 1: Monthly Expenses */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-emerald-500" />
-                  年平均支出
-                </h2>
-                <span className="text-2xl font-bold text-emerald-600 font-mono">
-                  {formatMoney(totalAnnualExpense)}
-                </span>
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <Wallet className="w-5 h-5 text-emerald-500" />
+                    月度支出明细
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-1">请输入每月的预估消费</p>
+                </div>
+                <div className="text-right">
+                   <div className="text-sm text-gray-500">年化总支出</div>
+                   <span className="text-xl font-bold text-emerald-600 font-mono">
+                    {formatMoney(totalAnnualExpense)}
+                  </span>
+                </div>
               </div>
               
               <div className="p-6 space-y-5">
                 <Slider 
-                  label="住房固定" 
+                  label="住房固定 (月)" 
                   description="房租、房贷、物业费"
-                  min={0} max={50000} value={expenses.housing} 
+                  min={0} max={20000} value={expenses.housing} 
                   onChange={(v) => handleExpenseChange('housing', v)} unit="¥" 
                 />
                 <Slider 
-                  label="餐饮生鲜" 
+                  label="餐饮生鲜 (月)" 
                   description="外卖、买菜、聚餐"
-                  min={0} max={50000} value={expenses.food} 
+                  min={0} max={10000} value={expenses.food} 
                   onChange={(v) => handleExpenseChange('food', v)} unit="¥" 
                 />
                 <Slider 
-                  label="日常消耗" 
+                  label="日常消耗 (月)" 
                   description="日用品、水电网"
-                  min={0} max={50000} value={expenses.consumables} 
+                  min={0} max={10000} value={expenses.consumables} 
                   onChange={(v) => handleExpenseChange('consumables', v)} unit="¥" 
                 />
                 <Slider 
-                  label="医保看病" 
-                  description="保险费、药品、体检"
-                  min={0} max={50000} value={expenses.medical} 
+                  label="医保看病 (月)" 
+                  description="保险费、药品分摊"
+                  min={0} max={10000} value={expenses.medical} 
                   onChange={(v) => handleExpenseChange('medical', v)} unit="¥" 
                 />
                 <Slider 
-                  label="交通快递" 
+                  label="交通快递 (月)" 
                   description="通勤、打车、网购运费"
-                  min={0} max={50000} value={expenses.transport} 
+                  min={0} max={10000} value={expenses.transport} 
                   onChange={(v) => handleExpenseChange('transport', v)} unit="¥" 
                 />
                 <Slider 
-                  label="电子女友" 
+                  label="电子女友 (月)" 
                   description="娱乐、游戏、订阅、爱好"
-                  min={0} max={50000} value={expenses.hobbies} 
+                  min={0} max={10000} value={expenses.hobbies} 
                   onChange={(v) => handleExpenseChange('hobbies', v)} unit="¥" 
                   highlight={true}
                 />
@@ -219,7 +220,10 @@ const App: React.FC = () => {
                     <Tooltip formatter={(value: number) => formatMoney(value)} />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="text-xs text-gray-400 absolute pointer-events-none">支出分布</div>
+                <div className="text-center absolute pointer-events-none">
+                  <div className="text-xs text-gray-400">月均</div>
+                  <div className="text-sm font-bold text-gray-700">{formatMoney(totalMonthlyExpense)}</div>
+                </div>
               </div>
             </div>
 
@@ -231,7 +235,8 @@ const App: React.FC = () => {
               </h2>
               <Slider 
                 label="年平均收入 (税后)" 
-                min={0} max={300000} step={1000}
+                description="工资、奖金、副业总和"
+                min={0} max={1000000} step={5000}
                 value={annualIncome} 
                 onChange={setAnnualIncome} 
                 unit="¥" 
@@ -256,20 +261,57 @@ const App: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <InfoCard 
                 title="基础版 FIRE 目标"
-                description="基于传统的 4% 法则 (支出 × 25)"
+                description="基于 4% 法则 (年支出 × 25)"
                 value={formatMoney(baseFireNumber)}
                 subValue={`可支撑 ${25} 年 (如果不进行投资)`}
                 icon={Target}
                 colorClass="text-purple-600"
               />
               <InfoCard 
-                title="达成目标所需时间"
-                description="基于当前收支与 4% 复利"
-                value={yearlySavings <= 0 ? "无法达成" : (yearsToReachGoal === Infinity ? "遥不可及" : `${yearsToReachGoal.toFixed(1)} 年`)}
-                subValue={yearlySavings > 0 ? `大概在 ${new Date().getFullYear() + Math.ceil(yearsToReachGoal)} 年退休` : "请增加收入或减少支出"}
+                title="达成基础目标所需时间"
+                description="基于当前结余进行复利定投"
+                value={yearlySavings <= 0 ? "无法达成" : (yearsToReachFireGoal === Infinity ? "遥不可及" : `${yearsToReachFireGoal.toFixed(1)} 年`)}
+                subValue={yearlySavings > 0 ? `大概在 ${new Date().getFullYear() + Math.ceil(yearsToReachFireGoal)} 年退休` : "支出超过了收入"}
                 icon={Hourglass}
-                colorClass={yearsToReachGoal < 15 ? "text-emerald-600" : "text-amber-500"}
+                colorClass={yearsToReachFireGoal < 15 ? "text-emerald-600" : "text-amber-500"}
               />
+            </div>
+
+            {/* NEW: Custom Goal Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 ring-1 ring-blue-50">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <Flag className="w-5 h-5 text-indigo-500" />
+                  自定义目标计算
+                </h2>
+                <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-medium">
+                  自定义目标
+                </div>
+              </div>
+
+              <Slider 
+                label="我想存够..." 
+                min={500000} max={20000000} step={100000}
+                value={customGoal} 
+                onChange={setCustomGoal} 
+                unit="¥" 
+              />
+
+              <div className="mt-6 flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div className="flex-1">
+                   <div className="text-sm text-gray-500 mb-1">距离达成目标</div>
+                   <div className="text-2xl font-bold text-indigo-600">
+                     {yearlySavings <= 0 ? "∞" : yearsToReachCustomGoal.toFixed(1)} <span className="text-sm font-normal text-gray-500">年</span>
+                   </div>
+                </div>
+                <div className="h-10 w-px bg-gray-200"></div>
+                <div className="flex-1">
+                   <div className="text-sm text-gray-500 mb-1">预计达成各份</div>
+                   <div className="text-lg font-semibold text-gray-700">
+                     {yearlySavings > 0 ? (new Date().getFullYear() + Math.ceil(yearsToReachCustomGoal)) : "未知"}
+                   </div>
+                </div>
+              </div>
             </div>
 
             {/* Advanced Scenarios Container */}
@@ -308,16 +350,12 @@ const App: React.FC = () => {
                     </div>
                     <div className="h-px bg-emerald-200 w-full my-2"></div>
                     <div className="flex justify-between items-center text-sm">
-                       <span className="text-emerald-800">资金利用效率</span>
+                       <span className="text-emerald-800">本金消耗</span>
                        <span className="font-mono font-medium text-emerald-900">
-                         100% 本金保留
+                         0% (本金永续)
                        </span>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
-                    <span className="font-semibold">逻辑公式：</span> 本金 = 年支出 ÷ 回报率。<br/>
-                    回报率越高，所需本金越低。假设本金不动，仅花掉当年产生的收益。
-                  </p>
                 </div>
 
                 {/* Vertical Divider */}
@@ -351,10 +389,6 @@ const App: React.FC = () => {
                        </span>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 leading-relaxed">
-                    <span className="font-semibold">逻辑公式：</span> 本金 = 年支出 ÷ 提取率。<br/>
-                    提取率越高，所需本金越少，但资金耗尽风险增加。
-                  </p>
                 </div>
 
               </div>
@@ -364,25 +398,28 @@ const App: React.FC = () => {
             <div className="bg-slate-900 rounded-2xl shadow-lg border border-slate-800 p-6 text-slate-300">
               <h3 className="text-white font-bold flex items-center gap-2 mb-4">
                 <ShieldCheck className="w-5 h-5 text-emerald-400" />
-                核心计算模型
+                计算逻辑说明
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                 <div>
-                  <h4 className="text-emerald-400 font-semibold mb-2">储蓄累积模型</h4>
-                  <div className="font-mono bg-slate-800 p-3 rounded text-xs mb-2">
-                     n = ln((Target × r / AnnualSaving) + 1) ÷ ln(1 + r)
-                  </div>
-                  <p className="text-xs text-slate-400">
-                    其中 r = 4% (保守理财收益), n = 所需年数。此公式计算定投复利下达到目标金额的时间。
+                  <h4 className="text-emerald-400 font-semibold mb-2">年平均支出</h4>
+                  <p className="text-xs text-slate-400 mb-2">
+                    所有月度支出项之和乘以 12。
+                    <span className="block font-mono mt-1 text-slate-500">Total = Σ(Monthly Items) × 12</span>
                   </p>
+                  
+                  <h4 className="text-emerald-400 font-semibold mb-2 mt-4">储蓄时间计算</h4>
+                  <div className="font-mono bg-slate-800 p-3 rounded text-xs mb-2">
+                     n = ln((Target × r / Savings) + 1) ÷ ln(1 + r)
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-orange-400 font-semibold mb-2">FIRE 基础公式</h4>
+                  <h4 className="text-orange-400 font-semibold mb-2">基础 FIRE 公式</h4>
                   <div className="font-mono bg-slate-800 p-3 rounded text-xs mb-2">
-                     FIRE Number = AnnualExpense ÷ WithdrawalRate
+                     FIRE Number = 年支出 ÷ 提取率 (默认为4%)
                   </div>
                   <p className="text-xs text-slate-400">
-                    若设定提取率为 4%，则 FIRE Number = 年支出 × 25。这是最经典的 FIRE 黄金法则。
+                    若年支出为 12 万，按照 4% 提取率，则需要 300 万本金 (12w ÷ 0.04)。
                   </p>
                 </div>
               </div>
