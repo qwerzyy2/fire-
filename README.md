@@ -1,5 +1,7 @@
 # 🔥 FIRE Lifestyle Planner (退休生活规划器)
 
+## Google Al Studio 全程参与制作
+
 > **Build your path to Financial Independence, Retire Early.**  
 > 一个基于 React 的现代化 FIRE 规划器，帮助你量化财务自由之路。
 > ![](README-media/73a4eed902d3ade42a13b29fd1464d4fffafb7e4.png)
@@ -96,3 +98,4 @@
 ------------------------------------------------------------------------
 
 Made with ❤️ for the FIRE community.
+
