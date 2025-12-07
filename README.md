@@ -3,7 +3,8 @@
 > **Build your path to Financial Independence, Retire Early.**  
 > 一个基于 React 的现代化 FIRE 规划器，帮助你量化财务自由之路。
 > ![](README-media/73a4eed902d3ade42a13b29fd1464d4fffafb7e4.png)
-> \## 📖 简介
+
+## 📖 简介
 
 **FIRE Lifestyle Planner** 是一款专为追求"财务独立，提前退休"（FIRE）人群设计的交互式计算器。不同于传统的复杂 Excel 表格，它提供了一个直观、极简且美观的界面，帮助用户通过调节生活方式（支出）、储蓄能力（收入）以及投资假设（回报率），实时推演达成财务自由所需的时间与资金。
 
